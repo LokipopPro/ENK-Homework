@@ -9,3 +9,4 @@ passlib[bcrypt]
 pandas
 python-dotenv
 pymysql
+mangum
