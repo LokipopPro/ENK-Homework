@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作业管理 - SA学生作业记录管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="dashboard.html">SA学生作业记录管理系统</a>
+            <button class="navbar-toggler" type="button" onclick="toggleMobileMenu()">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-2"></i><span id="username">SA老师</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#">个人信息</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="javascript:logout()">退出登录</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="dashboard.html">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="nav-text">控制台</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="students.html">
+                    <i class="bi bi-person-lines-fill"></i>
+                    <span class="nav-text">学生管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="homework.html">
+                    <i class="bi bi-book"></i>
+                    <span class="nav-text">作业管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="statistics.html">
+                    <i class="bi bi-bar-chart"></i>
+                    <span class="nav-text">统计分析</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="export.html">
+                    <i class="bi bi-download"></i>
+                    <span class="nav-text">数据导出</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 class="h3">作业管理</h1>
+                    <p class="text-muted">管理学生作业记录</p>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHomeworkModal">
+                        <i class="bi bi-plus me-2"></i>添加作业记录
+                    </button>
+                    <button class="btn btn-outline-primary ms-2" onclick="copyLastWeekHomework()">
+                        <i class="bi bi-copy me-2"></i>复制上周作业
+                    </button>
+                </div>
+            </div>
+
+            <!-- 搜索和筛选 -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="搜索学生姓名" id="searchInput">
+                        <button class="btn btn-outline-primary" onclick="searchHomework()">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <select class="form-select" id="typeFilter">
+                            <option value="">所有作业类型</option>
+                            <!-- 选项将通过JavaScript动态填充 -->
+                        </select>
+                        <button class="btn btn-outline-primary" onclick="filterByType()">
+                            <i class="bi bi-filter"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control" placeholder="周次" id="weekFilter" min="1" max="53">
+                        <button class="btn btn-outline-primary" onclick="filterByWeek()">
+                            <i class="bi bi-filter"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作业记录列表 -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="homeworkTable">
+                                    <thead>
+                                        <tr>
+                                            <th onclick="sortTable(this.closest('table'), 0)">学生姓名</th>
+                                            <th onclick="sortTable(this.closest('table'), 1)">作业类型</th>
+                                            <th onclick="sortTable(this.closest('table'), 2)">周次</th>
+                                            <th onclick="sortTable(this.closest('table'), 3)">总题数</th>
+                                            <th onclick="sortTable(this.closest('table'), 4)">正确题数</th>
+                                            <th onclick="sortTable(this.closest('table'), 5)">正确率</th>
+                                            <th onclick="sortTable(this.closest('table'), 6)">批改日期</th>
+                                            <th onclick="sortTable(this.closest('table'), 7)">状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="homeworkBody">
+                                        <!-- 数据将通过JavaScript动态填充 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加作业记录模态框 -->
+    <div class="modal fade" id="addHomeworkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加作业记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addHomeworkForm">
+                        <div class="mb-3">
+                            <label for="homeworkStudent" class="form-label">学生</label>
+                            <select class="form-select" id="homeworkStudent" required>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkType" class="form-label">作业类型</label>
+                            <select class="form-select" id="homeworkType" required>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkCycle" class="form-label">周期</label>
+                            <select class="form-select" id="homeworkCycle" required>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkWeek" class="form-label">周次</label>
+                            <input type="number" class="form-control" id="homeworkWeek" min="1" max="53" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkTotal" class="form-label">总题数</label>
+                            <input type="number" class="form-control" id="homeworkTotal" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkCorrect" class="form-label">正确题数</label>
+                            <input type="number" class="form-control" id="homeworkCorrect" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkDate" class="form-label">批改日期</label>
+                            <input type="date" class="form-control" id="homeworkDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homeworkRemark" class="form-label">备注</label>
+                            <textarea class="form-control" id="homeworkRemark" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="addHomework()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑作业记录模态框 -->
+    <div class="modal fade" id="editHomeworkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑作业记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editHomeworkForm">
+                        <input type="hidden" id="editHomeworkId">
+                        <div class="mb-3">
+                            <label for="editHomeworkStudent" class="form-label">学生</label>
+                            <select class="form-select" id="editHomeworkStudent" disabled>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkType" class="form-label">作业类型</label>
+                            <select class="form-select" id="editHomeworkType" disabled>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkCycle" class="form-label">周期</label>
+                            <select class="form-select" id="editHomeworkCycle" disabled>
+                                <!-- 选项将通过JavaScript动态填充 -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkWeek" class="form-label">周次</label>
+                            <input type="number" class="form-control" id="editHomeworkWeek" min="1" max="53" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkTotal" class="form-label">总题数</label>
+                            <input type="number" class="form-control" id="editHomeworkTotal" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkCorrect" class="form-label">正确题数</label>
+                            <input type="number" class="form-control" id="editHomeworkCorrect" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkDate" class="form-label">批改日期</label>
+                            <input type="date" class="form-control" id="editHomeworkDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editHomeworkRemark" class="form-label">备注</label>
+                            <textarea class="form-control" id="editHomeworkRemark" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="updateHomework()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/common.js"></script>
+    <script src="../../assets/js/sa/homework.js"></script>
+</body>
+</html>
