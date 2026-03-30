@@ -1,34 +1,113 @@
-# 在 api/index.py 文件中添加以下代码
+from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from datetime import timedelta
+import os
+import sys
 
-# 模拟用户数据
-fake_users_db = {
-    "admin": {
-        "id": 1,
-        "username": "admin",
-        "name": "管理员",
-        "role": "admin",
-        "status": "active",
-        "password": "admin123"
-    }
-}
+# 添加日志
+print("Starting API server...")
+print(f"Python version: {sys.version}")
+print(f"Current directory: {os.getcwd()}")
+print(f"Python path: {sys.path}")
 
-# 简单的登录 API
+# 导入数据库相关模块
+try:
+    from app.models import Base
+    from app.api import api_router
+    from app.utils import engine, get_password_hash, get_db, create_access_token, decode_access_token, verify_password
+    from app.models import User
+    print("Successfully imported modules")
+except Exception as e:
+    print(f"Error importing modules: {e}")
+    import traceback
+    traceback.print_exc()
+
+# 创建FastAPI应用
+app = FastAPI(
+    title="SA学生作业记录管理系统",
+    description="用于SA老师记录学生每周英语作业完成情况的系统",
+    version="1.0.0"
+)
+
+# 配置CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 数据库初始化
+def init_database():
+    try:
+        # 创建所有表
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully")
+        
+        # 创建默认管理员账号
+        db = Session(bind=engine)
+        try:
+            # 检查是否已存在管理员账号
+            admin = db.query(User).filter(User.username == "admin").first()
+            if not admin:
+                # 创建默认管理员
+                admin = User(
+                    username="admin",
+                    password_hash=get_password_hash("123456"),
+                    name="管理员",
+                    role="admin",
+                    status="active"
+                )
+                db.add(admin)
+                db.commit()
+                print("默认管理员账号创建成功: username=admin, password=123456")
+            else:
+                print("管理员账号已存在")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
+
+# 执行数据库初始化
+init_database()
+
+# 验证token
+def get_current_user(token: str = Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    payload = decode_access_token(token.password)  # 使用password字段作为token
+    if payload is None:
+        raise credentials_exception
+    username: str = payload.get("sub")
+    if username is None:
+        raise credentials_exception
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    if user.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
+        )
+    return user
+
+# 登录 API
 @app.post("/api/auth/login")
-async def login(form_data: OAuth2PasswordRequestForm = None):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     try:
         print(f"Login attempt for user: {form_data.username}")
         
         # 检查用户是否存在
-        user = fake_users_db.get(form_data.username)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # 检查密码
-        if user["password"] != form_data.password:
+        user = db.query(User).filter(User.username == form_data.username).first()
+        if not user or not verify_password(form_data.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -36,31 +115,37 @@ async def login(form_data: OAuth2PasswordRequestForm = None):
             )
         
         # 检查用户状态
-        if user["status"] != "active":
+        if user.status != "active":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled"
             )
         
-        # 简单返回 token
-        return {"access_token": "test-token", "token_type": "bearer"}
+        # 创建访问令牌
+        access_token_expires = timedelta(minutes=30)
+        access_token = create_access_token(
+            data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
     except Exception as e:
         print(f"Login error: {e}")
         import traceback
         traceback.print_exc()
         raise
 
-# 添加获取用户信息的 API
+# 获取用户信息 API
 @app.get("/api/auth/me")
-async def get_me():
+async def get_me(token: str = Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
     try:
-        # 返回模拟的管理员用户信息
+        # 验证token并获取用户信息
+        user = get_current_user(token, db)
         return {
-            "id": 1,
-            "username": "admin",
-            "name": "管理员",
-            "role": "admin",
-            "status": "active"
+            "id": user.id,
+            "username": user.username,
+            "name": user.name,
+            "role": user.role,
+            "status": user.status
         }
     except Exception as e:
         print(f"Get me error: {e}")
@@ -71,4 +156,14 @@ async def get_me():
 # 根路径
 @app.get("/")
 async def root():
-    return {"message": "SA学生作业记录
+    return {"message": "SA学生作业记录管理系统 API", "version": "1.0.0"}
+
+# 健康检查
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Vercel Serverless Functions 入口
+from mangum import Mangum
+
+handler = Mangum(app)
