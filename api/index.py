@@ -1,42 +1,14 @@
-# 修改 api/index.py 文件
-from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from datetime import timedelta
-import os
-import sys
-
-# 添加日志
-print("Starting API server...")
-print(f"Python version: {sys.version}")
-print(f"Current directory: {os.getcwd()}")
-print(f"Python path: {sys.path}")
-
-# 简化版本：直接实现登录 API
-app = FastAPI(
-    title="SA学生作业记录管理系统",
-    description="用于SA老师记录学生每周英语作业完成情况的系统",
-    version="1.0.0"
-)
-
-# 配置CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 在 api/index.py 文件中添加以下代码
 
 # 模拟用户数据
 fake_users_db = {
     "admin": {
+        "id": 1,
         "username": "admin",
         "name": "管理员",
         "role": "admin",
         "status": "active",
-        "password": "admin123"  # 实际环境中应该使用密码哈希
+        "password": "admin123"
     }
 }
 
@@ -70,7 +42,7 @@ async def login(form_data: OAuth2PasswordRequestForm = None):
                 detail="User account is disabled"
             )
         
-        # 简单返回 token（实际环境中应该使用 JWT）
+        # 简单返回 token
         return {"access_token": "test-token", "token_type": "bearer"}
     except Exception as e:
         print(f"Login error: {e}")
@@ -78,17 +50,25 @@ async def login(form_data: OAuth2PasswordRequestForm = None):
         traceback.print_exc()
         raise
 
+# 添加获取用户信息的 API
+@app.get("/api/auth/me")
+async def get_me():
+    try:
+        # 返回模拟的管理员用户信息
+        return {
+            "id": 1,
+            "username": "admin",
+            "name": "管理员",
+            "role": "admin",
+            "status": "active"
+        }
+    except Exception as e:
+        print(f"Get me error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
 # 根路径
 @app.get("/")
 async def root():
-    return {"message": "SA学生作业记录管理系统 API", "version": "1.0.0"}
-
-# 健康检查
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-# Vercel Serverless Functions 入口
-from mangum import Mangum
-
-handler = Mangum(app)
+    return {"message": "SA学生作业记录
