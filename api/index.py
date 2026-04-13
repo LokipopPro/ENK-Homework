@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from datetime import timedelta
 import os
@@ -40,6 +40,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 配置OAuth2
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
 # 数据库初始化
 def init_database():
     try:
@@ -77,13 +80,13 @@ def init_database():
 init_database()
 
 # 验证token
-def get_current_user(token: str = Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    payload = decode_access_token(token.password)  # 使用password字段作为token
+    payload = decode_access_token(token)
     if payload is None:
         raise credentials_exception
     username: str = payload.get("sub")
@@ -136,16 +139,15 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 # 获取用户信息 API
 @app.get("/api/auth/me")
-async def get_me(token: str = Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
+async def get_me(current_user: User = Depends(get_current_user)):
     try:
-        # 验证token并获取用户信息
-        user = get_current_user(token, db)
+        # 返回当前用户信息
         return {
-            "id": user.id,
-            "username": user.username,
-            "name": user.name,
-            "role": user.role,
-            "status": user.status
+            "id": current_user.id,
+            "username": current_user.username,
+            "name": current_user.name,
+            "role": current_user.role,
+            "status": current_user.status
         }
     except Exception as e:
         print(f"Get me error: {e}")
